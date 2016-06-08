@@ -31,6 +31,7 @@ var XMLHttpRequest = _window.XMLHttpRequest;
 var localStorage = _window.localStorage;
 var Blob = _window.Blob;
 
+
 var isSupported = XMLHttpRequest && localStorage && Blob && typeof Blob.prototype.slice === "function";
 
 // The usage of the commonjs exporting syntax instead of the new ECMAScript
@@ -45,11 +46,14 @@ module.exports = {
 },{"./upload":3}],3:[function(_dereq_,module,exports){
 "use strict";
 
-var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })(); /* global window, XMLHttpRequest */
-
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /* global window, XMLHttpRequest */
+
 
 var _fingerprint = _dereq_("./fingerprint");
 
@@ -67,6 +71,7 @@ var _window = window;
 var localStorage = _window.localStorage;
 var btoa = _window.btoa;
 
+
 var defaultOptions = {
   endpoint: "",
   fingerprint: _fingerprint2.default,
@@ -80,7 +85,7 @@ var defaultOptions = {
   withCredentials: false
 };
 
-var Upload = (function () {
+var Upload = function () {
   function Upload(file, options) {
     _classCallCheck(this, Upload);
 
@@ -119,6 +124,9 @@ var Upload = (function () {
         this._emitError(new Error("tus: no endpoint provided"));
         return;
       }
+
+      // store query params for next uses
+      this._query = this.options.params ? this._constructQuery(this.options.params) : this._extractQuery(this.options.endpoint);
 
       // A URL has manually been specified, so we try to resume
       if (this.url !== null) {
@@ -166,10 +174,28 @@ var Upload = (function () {
     }
   }, {
     key: "_emitSuccess",
-    value: function _emitSuccess() {
+    value: function _emitSuccess(result) {
       if (typeof this.options.onSuccess === "function") {
-        this.options.onSuccess();
+        this.options.onSuccess(result);
       }
+    }
+  }, {
+    key: "_extractQuery",
+    value: function _extractQuery(url) {
+      var delimiter = '?';
+
+      return url.indexOf(delimiter) > -1 ? url.split(delimiter)[1] : null;
+    }
+  }, {
+    key: "_constructQuery",
+    value: function _constructQuery(params) {
+      if (params === null || (typeof params === "undefined" ? "undefined" : _typeof(params)) !== 'object') {
+        throw new Error('Params expected to be an object');
+      }
+
+      return Object.keys(params).map(function (key) {
+        return key + "=" + params[key];
+      }).join('&');
     }
 
     /**
@@ -247,7 +273,7 @@ var Upload = (function () {
           return;
         }
 
-        _this.url = xhr.getResponseHeader("Location");
+        _this.url = xhr.getResponseHeader("Location") + (_this._query ? '?' + _this._query : '');
 
         if (_this.options.resume) {
           localStorage.setItem(_this._fingerprint, _this.url);
@@ -318,8 +344,9 @@ var Upload = (function () {
         // Upload has already been completed and we do not need to send additional
         // data to the server
         if (offset === length) {
+          var result = xhr.getResponseHeader('File-URL');
           _this2._emitProgress(length, length);
-          _this2._emitSuccess();
+          _this2._emitSuccess(result);
           return;
         }
 
@@ -370,8 +397,9 @@ var Upload = (function () {
         if (offset == _this3.file.size) {
           // Yay, finally done :)
           // Emit a last progress event
+          var result = xhr.getResponseHeader('File-URL');
           _this3._emitProgress(offset, offset);
-          _this3._emitSuccess();
+          _this3._emitSuccess(result);
           return;
         }
 
@@ -415,7 +443,7 @@ var Upload = (function () {
   }]);
 
   return Upload;
-})();
+}();
 
 function encodeMetadata(metadata) {
   if (!("btoa" in window)) {
